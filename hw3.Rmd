@@ -1,0 +1,56 @@
+---
+title: 'CS6190: Probabilistic Modeling Homework 3
+MCMC'
+author: "Gopal Menon"
+date: "`r format(Sys.time(), '%d %B, %Y')`"
+output:
+  pdf_document: default
+  html_document:
+    df_print: paged
+header-includes:
+- \usepackage{mathtools}
+- \usepackage{amsmath}
+- \usepackage{amssymb}
+- \usepackage{dirtytalk}
+- \DeclareMathOperator{\Unif}{Unif}
+- \DeclareMathOperator{\E}{E}
+- \DeclareMathOperator{\Var}{Var}
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+\hrule
+
+\begin{enumerate}
+
+\item[1.]
+
+\end{enumerate}
+
+\begin{enumerate}
+
+\item[2.] Say you are given data $(X,Y)$, with $X \in \mathbb{R}^d$ and $Y \in \{0,1\}$. The goal is to train a classifier that will predict an unknown class label $\tilde{y}$ from a new data point $\tilde{x}$. Consider the following model:
+
+$$
+\begin{aligned} 
+Y &\sim Ber \left ( \frac{1}{1+e^{-X^T\beta}}\right ),\\
+\beta &\sim N(0,\sigma^2I).
+\end{aligned}\\
+$$
+This is a \textbf{Bayesian logistic regression} model. Your goal is to derive and implement a Hamiltonian Monte Carlo sampler for doing Bayesian inference on $\beta$.
+
+\end{enumerate}
+
+\begin{enumerate}
+
+\item[(a)]Write down the formula for the unormalized posterior of $\beta|Y$, i.e.,
+
+$$
+\begin{aligned} 
+p(\beta|y;x,\sigma) &\propto \prod_{i=1}^n p(y_i|\beta; x_i)p(\beta; \sigma)
+\end{aligned}\\
+$$
+
+\end{enumerate}
