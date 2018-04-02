@@ -4,11 +4,12 @@ VERSICOLOR_LABEL = 1
 VIRGINICA_LABEL = 0
 
 # HMC Parameters
-NUMBER_OF_STEPS = 5000
-STEP_SIZE = 0.1
+STEP_SIZE = 0.01
+NUMBER_OF_STEPS = 40
 CLASSIFICATION_BOUNDARY_MEAN = 0
 CLASSIFICATION_BOUNDARY_VARIANCE = 1
-NUMBER_OF_ITERATIONS = 1000
+BURN_IN_ITERATIONS = 10
+NUMBER_OF_ITERATIONS = 10
 
 ## Potential energy function 
 ## classification_boundary_vector: position vector
@@ -74,6 +75,16 @@ test_data = rbind(iris_data[which(iris_data[["Species"]] == VERSICOLOR_LABEL), ]
 
 # Generate a randow vector for classification
 next_classification_boundary = rnorm(n=length(training_data[1,]), mean=CLASSIFICATION_BOUNDARY_MEAN, sd=sqrt(CLASSIFICATION_BOUNDARY_VARIANCE))
+
+# Burn in
+for (run_counter in 1:BURN_IN_ITERATIONS) {
+
+    next_classification_boundary = Hamiltonian_Monte_Carlo(potential_energy_function=potential_energy_function, 
+                                                         potential_energy_gradient=potential_energy_gradient, 
+                                                         step_size=STEP_SIZE, 
+                                                         number_of_steps=NUMBER_OF_STEPS, 
+                                                         initial_position=next_classification_boundary)
+}
 
 classification_boundary_trend = next_classification_boundary
 
