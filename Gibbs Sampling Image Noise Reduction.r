@@ -15,7 +15,7 @@ PIXEL_DISSIMILARITY_TO_NOISY_COUNTERPART = 1
 
 # Run parameters
 BURN_IN_ITERATIONS = 10
-DENOISING_ITERATIONS = 40
+DENOISING_ITERATIONS = 50
 NORTH_NEIGHBOR = "North"
 EAST_NEIGHBOR = "East"
 SOUTH_NEIGHBOR = "South"
@@ -43,7 +43,7 @@ retrieve_image <- function (image_name) {
 get_half_checkerboard = function(white_squares, image_pixel_indexes, image_width) {
   
   even_row = (floor((image_pixel_indexes - 1) / image_width) + 1) %% 2 == 0
-  even_pixel_column = (image_pixel_indexes %% image_width) %% 2 == 0
+  even_pixel_column = (((image_pixel_indexes - 1 ) %% image_width) + 1) %% 2 == 0
   
   if (isTRUE(white_squares)) {
     return(xor(even_row, even_pixel_column))
@@ -78,7 +78,7 @@ get_pixel_neighbors = function(pixel_index, image_width, image_height) {
   
 }
 
-get_pixel_energy_level = function(pixel_index, pixel_neighbors, denoised_image, noisy_image, black_pixel) {
+get_pixel_energy_level = function(pixel_index, pixel_neighbors, denoised_image, noisy_image, black_pixel, ising_prior_only) {
 
   # Get pixel neighbors
   pixel_north_neighbor = pixel_neighbors[[NORTH_NEIGHBOR]] 
@@ -93,17 +93,19 @@ get_pixel_energy_level = function(pixel_index, pixel_neighbors, denoised_image, 
   }
   
   # Energy based on proportion of black to white pixels
-  pixel_energy = BLACK_TO_WHITE_PIXEL_RATIO * pixel_color
+  pixel_energy = BLACK_TO_WHITE_PIXEL_RATIO * pixel_color * rep(1:length(pixel_index))
   
   # Energy due to similarity with neighbors
-  for (pixel_neighbor in c(pixel_north_neighbor, pixel_east_neighbor, pixel_south_neighbor, pixel_west_neighbor)) {
-    if (!is.na(pixel_neighbor)) {
-      pixel_energy = pixel_energy + PIXEL_SIMILARITY_TO_NEIGHBORS * pixel_color * pixel_neighbor
-    }
-  }
+  pixel_energy = pixel_energy + 
+    ifelse(is.na(pixel_north_neighbor), 1, pixel_color * denoised_image[pixel_north_neighbor]) + 
+    ifelse(is.na(pixel_east_neighbor), 1, pixel_color * denoised_image[pixel_east_neighbor]) +
+    ifelse(is.na(pixel_south_neighbor), 1, pixel_color * denoised_image[pixel_south_neighbor]) +
+    ifelse(is.na(pixel_west_neighbor), 1, pixel_color * denoised_image[pixel_west_neighbor])
   
   # Energy due to closeness to noisy image
-  pixel_energy = pixel_energy - (0.5 * (pixel_color - noisy_image[pixel_index]) ^ 2) / PIXEL_DISSIMILARITY_TO_NOISY_COUNTERPART
+  if (!isTRUE(ising_prior_only)) {
+    pixel_energy = pixel_energy - (0.5 * (pixel_color - noisy_image[pixel_index]) ^ 2) / PIXEL_DISSIMILARITY_TO_NOISY_COUNTERPART
+  }
   
   return(pixel_energy)
   
@@ -115,12 +117,13 @@ get_pixel_energy_level = function(pixel_index, pixel_neighbors, denoised_image, 
 ## white_squares: boolean for white squares of checkerboard
 ##
 ## Will return the the image after denoising
-denoise_half_checkerboard = function(denoised_image, noisy_image, white_squares) {
+denoise_half_checkerboard = function(denoised_image, noisy_image, white_squares, ising_prior_only) {
   
   # Get pixel indexes corresponding to half the checkerboard
-  pixel_index = get_half_checkerboard(white_squares, 
-                                      image_pixel_indexes=rep(1, length(noisy_image)), 
-                                      image_width=dim(noisy_image)[IMAGE_WIDTH_DIMENSION])
+  pixel_present = get_half_checkerboard(white_squares, 
+                                        image_pixel_indexes=seq(1, length(noisy_image)), 
+                                        image_width=dim(noisy_image)[IMAGE_WIDTH_DIMENSION])
+  pixel_index = seq(1, length(noisy_image))[pixel_present]
   
   # Get get the 4 neighboring pixels for each pixel in the checkerboard
   pixel_neighbors = get_pixel_neighbors(pixel_index, 
@@ -128,8 +131,8 @@ denoise_half_checkerboard = function(denoised_image, noisy_image, white_squares)
                                         image_height=dim(noisy_image)[IMAGE_HEIGHT_DIMENSION])
   
   # Get energy level of pixels
-  black_pixel_energy_level = get_pixel_energy_level(pixel_index, pixel_neighbors, denoised_image, noisy_image, black_pixel=TRUE)
-  white_pixel_energy_level = get_pixel_energy_level(pixel_index, pixel_neighbors, denoised_image, noisy_image, black_pixel=FALSE)
+  black_pixel_energy_level = exp(get_pixel_energy_level(pixel_index, pixel_neighbors, denoised_image, noisy_image, black_pixel=TRUE, ising_prior_only))
+  white_pixel_energy_level = exp(get_pixel_energy_level(pixel_index, pixel_neighbors, denoised_image, noisy_image, black_pixel=FALSE, ising_prior_only))
 
   # Compute probability of pixel being black
   black_pixel_probability = black_pixel_energy_level / (black_pixel_energy_level + white_pixel_energy_level)
@@ -146,26 +149,31 @@ denoise_half_checkerboard = function(denoised_image, noisy_image, white_squares)
 ## noisy_image: grayscale noisy image
 ##
 ## Will return the the image after denoising
-denoise_image = function(noisy_image) {
+denoise_image = function(noisy_image, ising_prior_only=FALSE, initialize_random=FALSE) {
   
   # Initialize denoised image
   denoised_image = noisy_image
+  if (isTRUE(initialize_random)) {
+    denoised_image = ifelse(rbinom(n=length(noisy_image), size=1, prob=0.5)==0, -1, 1)
+  }
   
   # Burn in
   for (iteration_counter in 1:BURN_IN_ITERATIONS) {
-    denoised_image = denoise_half_checkerboard(denoised_image, noisy_image, white_squares=TRUE)
-    denoised_image = denoise_half_checkerboard(denoised_image, noisy_image, white_squares=FALSE)
+    denoised_image = denoise_half_checkerboard(denoised_image, noisy_image, white_squares=TRUE, ising_prior_only)
+    denoised_image = denoise_half_checkerboard(denoised_image, noisy_image, white_squares=FALSE, ising_prior_only)
   }
   
   # Denoise the image
   for (iteration_counter in 1:DENOISING_ITERATIONS) {
-    denoised_image = denoise_half_checkerboard(denoised_image, noisy_image, white_squares=TRUE)
-    denoised_image = denoise_half_checkerboard(denoised_image, noisy_image, white_squares=FALSE)
+    denoised_image = denoise_half_checkerboard(denoised_image, noisy_image, white_squares=TRUE, ising_prior_only)
+    denoised_image = denoise_half_checkerboard(denoised_image, noisy_image, white_squares=FALSE, ising_prior_only)
   }
   
   return(denoised_image)
   
 }
 
-noisy_message = retrieve_image("noisy-message.png")
-denoised_message = denoise_image(noisy_message)
+image_array = retrieve_image("noisy-yinyang.png")
+plot(image_array)
+denoised_image = denoise_image(image_array, ising_prior_only=FALSE, initialize_random=TRUE)
+plot(denoised_image)
