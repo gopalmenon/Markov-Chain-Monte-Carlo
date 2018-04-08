@@ -1,4 +1,5 @@
 library(imager)
+library(animation)
 
 # Image dimension constants
 IMAGE_WIDTH_DIMENSION = 1
@@ -186,7 +187,6 @@ denoise_image = function(image_file, ising_prior_only=FALSE, initialize_random=T
   image_array = retrieve_image(image_file)
 
   if (isTRUE(show_animation)) {
-    library("animation")
     oopt <- ani.options(interval = 0.2, nmax = BURN_IN_ITERATIONS + DENOISING_ITERATIONS)
   } else {
     plot(image_array)
