@@ -9,7 +9,7 @@ NUMBER_OF_STEPS = 40
 CLASSIFICATION_BOUNDARY_MEAN = 0
 CLASSIFICATION_BOUNDARY_VARIANCE = 1
 BURN_IN_ITERATIONS = 10
-NUMBER_OF_ITERATIONS = 1000
+NUMBER_OF_ITERATIONS = 400
 
 ## Potential energy function 
 ## classification_boundary_vector: position vector
@@ -98,6 +98,7 @@ print(paste("HMC Simulation for Iris data ran for", difftime(end_time, start_tim
 # Plot the components of the decision boundary vector
 for (plot_counter in 1:length(classification_boundary_trend[1,])) {
   plot(rep(1:length(classification_boundary_trend[,plot_counter])), classification_boundary_trend[,plot_counter], type='l', xlab='Iteration', ylab='Value', main=paste('Trend for', names(classification_boundary_trend[1,])[plot_counter], 'multiplier'))
+  hist(classification_boundary_trend[,plot_counter], freq=FALSE, main=paste('Histogram for', names(classification_boundary_trend[1,])[plot_counter], 'multiplier'), xlab=paste(names(classification_boundary_trend[1,])[plot_counter], 'multiplier'), ylab="Density", col="blue")
 }
 
 # Classification boundary is the average vector
