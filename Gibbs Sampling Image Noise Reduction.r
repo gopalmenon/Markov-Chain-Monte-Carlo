@@ -15,7 +15,7 @@ PIXEL_DISSIMILARITY_TO_NOISY_COUNTERPART = 1
 
 # Run parameters
 BURN_IN_ITERATIONS = 10
-DENOISING_ITERATIONS = 50
+DENOISING_ITERATIONS = 30
 NORTH_NEIGHBOR = "North"
 EAST_NEIGHBOR = "East"
 SOUTH_NEIGHBOR = "South"
@@ -117,7 +117,7 @@ get_pixel_energy_level = function(pixel_index, pixel_neighbors, denoised_image, 
 ## white_squares: boolean for white squares of checkerboard
 ##
 ## Will return the the image after denoising
-denoise_half_checkerboard = function(denoised_image, noisy_image, white_squares, ising_prior_only) {
+denoise_half_checkerboard = function(denoised_image, noisy_image, white_squares, ising_prior_only, show_animation) {
   
   # Get pixel indexes corresponding to half the checkerboard
   pixel_present = get_half_checkerboard(white_squares, 
@@ -138,42 +138,85 @@ denoise_half_checkerboard = function(denoised_image, noisy_image, white_squares,
   black_pixel_probability = black_pixel_energy_level / (black_pixel_energy_level + white_pixel_energy_level)
   
   # Sample from the probability distribution
-  denoised_image[pixel_index] = ifelse(black_pixel_energy_level >= runif(n=length(black_pixel_energy_level)), BLACK_PIXEL, WHITE_PIXEL)
+  denoised_image[pixel_index] = ifelse(black_pixel_probability >= runif(n=length(black_pixel_energy_level)), BLACK_PIXEL, WHITE_PIXEL)
+  
+  if (isTRUE(show_animation)) {
+    plot(denoised_image)
+    ani.pause()
+  }
   
   # Return the denoised image corresponding to half the checkerboard
   return(denoised_image)
   
 }
 
-## Denoise the image
+## Denoise the image using Gibbs Sampling
 ## noisy_image: grayscale noisy image
 ##
 ## Will return the the image after denoising
-denoise_image = function(noisy_image, ising_prior_only=FALSE, initialize_random=FALSE) {
+gibbs_sampling = function(noisy_image, ising_prior_only=FALSE, initialize_random=FALSE, show_animation) {
   
   # Initialize denoised image
-  denoised_image = noisy_image
   if (isTRUE(initialize_random)) {
     denoised_image = ifelse(rbinom(n=length(noisy_image), size=1, prob=0.5)==0, -1, 1)
+    dim(denoised_image) = dim(noisy_image)
+    denoised_image = cimg(denoised_image)
+  } else {
+    denoised_image = noisy_image
   }
   
   # Burn in
   for (iteration_counter in 1:BURN_IN_ITERATIONS) {
-    denoised_image = denoise_half_checkerboard(denoised_image, noisy_image, white_squares=TRUE, ising_prior_only)
-    denoised_image = denoise_half_checkerboard(denoised_image, noisy_image, white_squares=FALSE, ising_prior_only)
+    denoised_image = denoise_half_checkerboard(denoised_image, noisy_image, white_squares=TRUE, ising_prior_only, show_animation)
+    denoised_image = denoise_half_checkerboard(denoised_image, noisy_image, white_squares=FALSE, ising_prior_only, show_animation)
   }
   
   # Denoise the image
   for (iteration_counter in 1:DENOISING_ITERATIONS) {
-    denoised_image = denoise_half_checkerboard(denoised_image, noisy_image, white_squares=TRUE, ising_prior_only)
-    denoised_image = denoise_half_checkerboard(denoised_image, noisy_image, white_squares=FALSE, ising_prior_only)
+    denoised_image = denoise_half_checkerboard(denoised_image, noisy_image, white_squares=TRUE, ising_prior_only, show_animation)
+    denoised_image = denoise_half_checkerboard(denoised_image, noisy_image, white_squares=FALSE, ising_prior_only, show_animation)
   }
   
   return(denoised_image)
   
 }
 
-image_array = retrieve_image("noisy-yinyang.png")
-plot(image_array)
-denoised_image = denoise_image(image_array, ising_prior_only=FALSE, initialize_random=TRUE)
-plot(denoised_image)
+denoise_image = function(image_file, ising_prior_only=FALSE, initialize_random=TRUE, show_animation=FALSE) {
+  
+  image_array = retrieve_image(image_file)
+
+  if (isTRUE(show_animation)) {
+    library("animation")
+    oopt <- ani.options(interval = 0.2, nmax = BURN_IN_ITERATIONS + DENOISING_ITERATIONS)
+  } else {
+    plot(image_array)
+  }
+  
+  denoised_image = gibbs_sampling(image_array, ising_prior_only, initialize_random, show_animation)
+  
+  if (isTRUE(show_animation)) {
+    ani.options(oopt)
+  } else {
+    plot(denoised_image)
+  }
+  
+}
+
+denoise_message = function() {
+  denoise_image(image_file="noisy-message.png", ising_prior_only=FALSE, initialize_random=TRUE, show_animation=TRUE)
+}
+
+
+denoise_yinyang = function() {
+  denoise_image(image_file="noisy-yinyang.png", ising_prior_only=FALSE, initialize_random=TRUE, show_animation=TRUE)
+}
+
+saveGIF({ani.options(interval = 0.2, nmax = BURN_IN_ITERATIONS + DENOISING_ITERATIONS)
+        par(mar = c(4, 4, .1, 0.1), mgp = c(2, 0.7, 0))
+        denoise_message()}, movie.name = "noisy-message.gif", img.name = "Rplot",
+        convert = "convert", cmd.fun = system, clean = TRUE)
+
+saveGIF({ani.options(interval = 0.2, nmax = BURN_IN_ITERATIONS + DENOISING_ITERATIONS)
+  par(mar = c(4, 4, .1, 0.1), mgp = c(2, 0.7, 0))
+  denoise_yinyang()}, movie.name = "noisy-yinyang.gif", img.name = "Rplot",
+  convert = "convert", cmd.fun = system, clean = TRUE)
