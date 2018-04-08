@@ -9,7 +9,7 @@ NUMBER_OF_STEPS = 40
 CLASSIFICATION_BOUNDARY_MEAN = 0
 CLASSIFICATION_BOUNDARY_VARIANCE = 1
 BURN_IN_ITERATIONS = 10
-NUMBER_OF_ITERATIONS = 100
+NUMBER_OF_ITERATIONS = 40
 
 ## Potential energy function 
 ## classification_boundary_vector: position vector
@@ -86,7 +86,7 @@ for (run_counter in 1:BURN_IN_ITERATIONS) {
                                                            potential_energy_gradient=potential_energy_gradient, 
                                                            step_size=STEP_SIZE, 
                                                            number_of_steps=NUMBER_OF_STEPS, 
-                                                           initial_position=next_classification_boundary)
+                                                           initial_position=previous_classification_boundary)
 }
 
 classification_boundary_trend = previous_classification_boundary
@@ -99,7 +99,7 @@ for (run_counter in 1:NUMBER_OF_ITERATIONS) {
                                                          potential_energy_gradient=potential_energy_gradient, 
                                                          step_size=STEP_SIZE, 
                                                          number_of_steps=NUMBER_OF_STEPS, 
-                                                         initial_position=next_classification_boundary)
+                                                         initial_position=previous_classification_boundary)
   
   if (all(previous_classification_boundary == next_classification_boundary)) {
     rejection_counter = rejection_counter + 1
