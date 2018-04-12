@@ -21,6 +21,8 @@ NORTH_NEIGHBOR = "North"
 EAST_NEIGHBOR = "East"
 SOUTH_NEIGHBOR = "South"
 WEST_NEIGHBOR = "West"
+NOISE_VARIANCE_INITIAL_ESTIMATE = 5
+
 
 ## Retrieve Image 
 ## image_name: image file name
@@ -151,10 +153,47 @@ denoise_half_checkerboard = function(denoised_image, noisy_image, white_squares,
   
 }
 
+## Estimate the noise variance
+## denoised_image: denoised image
+## noisy_image: grayscale noisy image
+## previous_variance_estimate: previous estimate of the variqnce
+##
+## Will return the estimate of the noise variance
+estimate_noise_variance = function(denoised_image, noisy_image, previous_variance_estimate) {
+  
+  if (!is.null(previous_variance_estimate)) {
+    current_variance_estimate = previous_variance_estimate
+    variance_range_start = current_variance_estimate * 0.9
+    variance_range_step = (current_variance_estimate - variance_range_start)/5
+    variance_range_end = variance_range_start + 10 * variance_range_step
+  } else {
+    current_variance_estimate = NOISE_VARIANCE_INITIAL_ESTIMATE
+    variance_range_start = ceiling(current_variance_estimate * 0.1)
+    variance_range_step = (current_variance_estimate - variance_range_start)/5
+    variance_range_end = variance_range_start + 10 * variance_range_step
+  }
+  
+  log_likelihood_trend = NULL
+  for (noise_variance in seq(from=variance_range_start, to=variance_range_end, by=variance_range_step)) {
+    
+    # Compute log likelihood of the current denoised image
+    log_likelihood = sum(log(dnorm(x=noisy_image-denoised_image, sd=noise_variance)))
+    if (!is.null(log_likelihood_trend)) {
+      log_likelihood_trend = rbind(log_likelihood_trend, log_likelihood)
+    } else {
+      log_likelihood_trend = log_likelihood
+    }
+    
+  }
+  
+  return(seq(from=variance_range_start, to=variance_range_end, by=variance_range_step)[which(log_likelihood_trend == max(log_likelihood_trend))])
+  
+}
+
 ## Denoise the image using Gibbs Sampling
 ## noisy_image: grayscale noisy image
 ##
-## Will return the the image after denoising
+## Will return the image after denoising
 gibbs_sampling = function(noisy_image, ising_prior_only=FALSE, initialize_random=FALSE, show_animation) {
   
   # Initialize denoised image
@@ -172,12 +211,16 @@ gibbs_sampling = function(noisy_image, ising_prior_only=FALSE, initialize_random
     denoised_image = denoise_half_checkerboard(denoised_image, noisy_image, white_squares=FALSE, ising_prior_only, show_animation)
   }
   
+  variance_estimate = NULL
+  
   # Denoise the image
   for (iteration_counter in 1:DENOISING_ITERATIONS) {
     denoised_image = denoise_half_checkerboard(denoised_image, noisy_image, white_squares=TRUE, ising_prior_only, show_animation)
     denoised_image = denoise_half_checkerboard(denoised_image, noisy_image, white_squares=FALSE, ising_prior_only, show_animation)
+    variance_estimate = estimate_noise_variance(denoised_image, noisy_image, variance_estimate)
   }
   
+  print(paste("Variance estimate:", variance_estimate))
   return(denoised_image)
   
 }
@@ -211,12 +254,16 @@ denoise_yinyang = function() {
   denoise_image(image_file="noisy-yinyang.png", ising_prior_only=FALSE, initialize_random=TRUE, show_animation=TRUE)
 }
 
-saveGIF({ani.options(interval = 0.2, nmax = BURN_IN_ITERATIONS + DENOISING_ITERATIONS)
-        par(mar = c(4, 4, .1, 0.1), mgp = c(2, 0.7, 0))
-        denoise_message()}, movie.name = "noisy-message.gif", img.name = "Rplot",
-        convert = "convert", cmd.fun = system, clean = TRUE)
+generate_gifs = function() {
+  saveGIF({ani.options(interval = 0.2, nmax = BURN_IN_ITERATIONS + DENOISING_ITERATIONS)
+    par(mar = c(4, 4, .1, 0.1), mgp = c(2, 0.7, 0))
+    denoise_message()}, movie.name = "noisy-message.gif", img.name = "Rplot",
+    convert = "convert", cmd.fun = system, clean = TRUE)
+  
+  saveGIF({ani.options(interval = 0.2, nmax = BURN_IN_ITERATIONS + DENOISING_ITERATIONS)
+    par(mar = c(4, 4, .1, 0.1), mgp = c(2, 0.7, 0))
+    denoise_yinyang()}, movie.name = "noisy-yinyang.gif", img.name = "Rplot",
+    convert = "convert", cmd.fun = system, clean = TRUE)
+}
 
-saveGIF({ani.options(interval = 0.2, nmax = BURN_IN_ITERATIONS + DENOISING_ITERATIONS)
-  par(mar = c(4, 4, .1, 0.1), mgp = c(2, 0.7, 0))
-  denoise_yinyang()}, movie.name = "noisy-yinyang.gif", img.name = "Rplot",
-  convert = "convert", cmd.fun = system, clean = TRUE)
+denoise_message()
