@@ -21,8 +21,9 @@ NORTH_NEIGHBOR = "North"
 EAST_NEIGHBOR = "East"
 SOUTH_NEIGHBOR = "South"
 WEST_NEIGHBOR = "West"
-NOISE_VARIANCE_INITIAL_ESTIMATE = 5
+NOISE_SD_INITIAL_ESTIMATE = 5
 
+std_dev_estimate = NULL
 
 ## Retrieve Image 
 ## image_name: image file name
@@ -159,25 +160,23 @@ denoise_half_checkerboard = function(denoised_image, noisy_image, white_squares,
 ## previous_variance_estimate: previous estimate of the variqnce
 ##
 ## Will return the estimate of the noise variance
-estimate_noise_variance = function(denoised_image, noisy_image, previous_variance_estimate) {
+estimate_noise_variance = function(denoised_image, noisy_image, previous_std_dev_estimate) {
   
-  if (!is.null(previous_variance_estimate)) {
-    current_variance_estimate = previous_variance_estimate
-    variance_range_start = current_variance_estimate * 0.9
-    variance_range_step = (current_variance_estimate - variance_range_start)/5
-    variance_range_end = variance_range_start + 10 * variance_range_step
+  if (!is.null(previous_std_dev_estimate)) {
+    current_std_dev_estimate = previous_std_dev_estimate
+    std_dev_range_start = current_std_dev_estimate * 0.9
   } else {
-    current_variance_estimate = NOISE_VARIANCE_INITIAL_ESTIMATE
-    variance_range_start = ceiling(current_variance_estimate * 0.1)
-    variance_range_step = (current_variance_estimate - variance_range_start)/5
-    variance_range_end = variance_range_start + 10 * variance_range_step
+    current_std_dev_estimate = NOISE_SD_INITIAL_ESTIMATE
+    std_dev_range_start = ceiling(current_std_dev_estimate * 0.1)
   }
+  std_dev_range_step = (current_std_dev_estimate - std_dev_range_start)/5
+  std_dev_range_end = std_dev_range_start + 10 * std_dev_range_step
   
   log_likelihood_trend = NULL
-  for (noise_variance in seq(from=variance_range_start, to=variance_range_end, by=variance_range_step)) {
+  for (noise_std_dev in seq(from=std_dev_range_start, to=std_dev_range_end, by=std_dev_range_step)) {
     
     # Compute log likelihood of the current denoised image
-    log_likelihood = sum(log(dnorm(x=noisy_image-denoised_image, sd=noise_variance)))
+    log_likelihood = sum(log(dnorm(x=noisy_image-denoised_image, sd=noise_std_dev)))
     if (!is.null(log_likelihood_trend)) {
       log_likelihood_trend = rbind(log_likelihood_trend, log_likelihood)
     } else {
@@ -186,7 +185,8 @@ estimate_noise_variance = function(denoised_image, noisy_image, previous_varianc
     
   }
   
-  return(seq(from=variance_range_start, to=variance_range_end, by=variance_range_step)[which(log_likelihood_trend == max(log_likelihood_trend))])
+  # Return the variance corresponding to maximum log likelihood
+  return(seq(from=std_dev_range_start, to=std_dev_range_end, by=std_dev_range_step)[which(log_likelihood_trend == max(log_likelihood_trend))])
   
 }
 
@@ -211,16 +211,14 @@ gibbs_sampling = function(noisy_image, ising_prior_only=FALSE, initialize_random
     denoised_image = denoise_half_checkerboard(denoised_image, noisy_image, white_squares=FALSE, ising_prior_only, show_animation)
   }
   
-  variance_estimate = NULL
-  
   # Denoise the image
   for (iteration_counter in 1:DENOISING_ITERATIONS) {
     denoised_image = denoise_half_checkerboard(denoised_image, noisy_image, white_squares=TRUE, ising_prior_only, show_animation)
     denoised_image = denoise_half_checkerboard(denoised_image, noisy_image, white_squares=FALSE, ising_prior_only, show_animation)
-    variance_estimate = estimate_noise_variance(denoised_image, noisy_image, variance_estimate)
+    std_dev_estimate = estimate_noise_variance(denoised_image, noisy_image, std_dev_estimate)
   }
   
-  print(paste("Variance estimate:", variance_estimate))
+  print(paste("Variance estimate:", std_dev_estimate^2))
   return(denoised_image)
   
 }
@@ -266,4 +264,4 @@ generate_gifs = function() {
     convert = "convert", cmd.fun = system, clean = TRUE)
 }
 
-denoise_message()
+denoise_yinyang()
