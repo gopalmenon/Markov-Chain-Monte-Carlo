@@ -10,13 +10,13 @@ BLACK_PIXEL = -1.0
 WHITE_PIXEL = 1.0
 
 # Model parameters
-BLACK_TO_WHITE_PIXEL_RATIO = 0
+BLACK_TO_WHITE_PIXEL_RATIO = 0.000001
 PIXEL_SIMILARITY_TO_NEIGHBORS = 1
 PIXEL_DISSIMILARITY_TO_NOISY_COUNTERPART = 1
 
 # Run parameters
 BURN_IN_ITERATIONS = 10
-DENOISING_ITERATIONS = 30
+DENOISING_ITERATIONS = 20
 NORTH_NEIGHBOR = "North"
 EAST_NEIGHBOR = "East"
 SOUTH_NEIGHBOR = "South"
@@ -211,14 +211,15 @@ gibbs_sampling = function(noisy_image, ising_prior_only=FALSE, initialize_random
     denoised_image = denoise_half_checkerboard(denoised_image, noisy_image, white_squares=FALSE, ising_prior_only, show_animation)
   }
   
+  std_dev_estimate = NULL
+  
   # Denoise the image
   for (iteration_counter in 1:DENOISING_ITERATIONS) {
     denoised_image = denoise_half_checkerboard(denoised_image, noisy_image, white_squares=TRUE, ising_prior_only, show_animation)
     denoised_image = denoise_half_checkerboard(denoised_image, noisy_image, white_squares=FALSE, ising_prior_only, show_animation)
     std_dev_estimate = estimate_noise_variance(denoised_image, noisy_image, std_dev_estimate)
   }
-  
-  print(paste("Variance estimate:", std_dev_estimate^2))
+
   return(denoised_image)
   
 }
@@ -229,8 +230,6 @@ denoise_image = function(image_file, ising_prior_only=FALSE, initialize_random=T
 
   if (isTRUE(show_animation)) {
     oopt <- ani.options(interval = 0.2, nmax = BURN_IN_ITERATIONS + DENOISING_ITERATIONS)
-  } else {
-    plot(image_array)
   }
   
   denoised_image = gibbs_sampling(image_array, ising_prior_only, initialize_random, show_animation)
@@ -249,7 +248,7 @@ denoise_message = function() {
 
 
 denoise_yinyang = function() {
-  denoise_image(image_file="noisy-yinyang.png", ising_prior_only=FALSE, initialize_random=TRUE, show_animation=TRUE)
+  denoise_image(image_file="noisy-yinyang.png", ising_prior_only=FALSE, initialize_random=TRUE, show_animation=FALSE)
 }
 
 generate_gifs = function() {
@@ -264,4 +263,3 @@ generate_gifs = function() {
     convert = "convert", cmd.fun = system, clean = TRUE)
 }
 
-denoise_yinyang()

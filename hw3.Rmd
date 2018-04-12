@@ -76,3 +76,7 @@ U(\beta) &= \sum_{i=1}^n (1-y_i) x_i^T\beta + \sum_{i=1}^n \log \left ( 1 + e^{-
 $$
 \end{enumerate}
 
+```{r q1a, echo=FALSE, message=FALSE}
+source("Gibbs Sampling Image Noise Reduction.r")
+denoise_yinyang()
+```
