@@ -33,7 +33,7 @@ The sampled images are shown for various values of $\alpha$ and $\beta$. The var
 
 ```{r q1a, echo=FALSE, message=FALSE, fig.align='center'}
 source("Gibbs Sampling Image Noise Reduction.r")
-#one_a_ising_prior_only()
+one_a_ising_prior_only()
 ```
 
 \begin{enumerate}
@@ -103,3 +103,23 @@ U(\beta) &= \sum_{i=1}^n (1-y_i) x_i^T\beta + \sum_{i=1}^n \log \left ( 1 + e^{-
 $$
 \end{enumerate}
 
+\begin{enumerate}
+
+\item[2(e)] Trace plots of the $\beta$ sequence and histograms are shown below.
+
+\end{enumerate}
+
+```{r q2e, echo=FALSE, message=FALSE, fig.align='center'}
+source("Iris Logistic Regression.r")
+run_iris_logistic_regression()
+```
+
+\begin{enumerate}
+
+\item[2(f)] A variance $\sigma^2$ value of $1$ was used, with a step size $\epsilon$ of $0.04$ and number of steps $L$ of $40$.
+
+\end{enumerate}
+
+```{r q2f, echo=FALSE, message=FALSE, fig.align='center'}
+print_results()
+```
