@@ -1,5 +1,4 @@
 library(imager)
-library(animation)
 
 # Image dimension constants
 IMAGE_WIDTH_DIMENSION = 1
@@ -10,7 +9,7 @@ BLACK_PIXEL = -1.0
 WHITE_PIXEL = 1.0
 
 # Model parameters
-BLACK_TO_WHITE_PIXEL_RATIO = 0.000001
+BLACK_TO_WHITE_PIXEL_RATIO = 0
 PIXEL_SIMILARITY_TO_NEIGHBORS = 1
 PIXEL_DISSIMILARITY_TO_NOISY_COUNTERPART = 1
 
@@ -23,7 +22,7 @@ SOUTH_NEIGHBOR = "South"
 WEST_NEIGHBOR = "West"
 NOISE_SD_INITIAL_ESTIMATE = 5
 
-std_dev_estimate = NULL
+std_dev_estimates = list()
 
 ## Retrieve Image 
 ## image_name: image file name
@@ -82,7 +81,7 @@ get_pixel_neighbors = function(pixel_index, image_width, image_height) {
   
 }
 
-get_pixel_energy_level = function(pixel_index, pixel_neighbors, denoised_image, noisy_image, black_pixel, ising_prior_only) {
+get_pixel_energy_level = function(pixel_index, pixel_neighbors, denoised_image, noisy_image, black_pixel, ising_prior_only, black_white_ratio, pixel_neighbor_similarity, pixel_similarity_to_noisy) {
 
   # Get pixel neighbors
   pixel_north_neighbor = pixel_neighbors[[NORTH_NEIGHBOR]] 
@@ -97,18 +96,18 @@ get_pixel_energy_level = function(pixel_index, pixel_neighbors, denoised_image, 
   }
   
   # Energy based on proportion of black to white pixels
-  pixel_energy = BLACK_TO_WHITE_PIXEL_RATIO * pixel_color * rep(1:length(pixel_index))
+  pixel_energy = black_white_ratio * pixel_color * rep(1:length(pixel_index))
   
   # Energy due to similarity with neighbors
   pixel_energy = pixel_energy + 
-    ifelse(is.na(pixel_north_neighbor), 1, pixel_color * denoised_image[pixel_north_neighbor]) + 
-    ifelse(is.na(pixel_east_neighbor), 1, pixel_color * denoised_image[pixel_east_neighbor]) +
-    ifelse(is.na(pixel_south_neighbor), 1, pixel_color * denoised_image[pixel_south_neighbor]) +
-    ifelse(is.na(pixel_west_neighbor), 1, pixel_color * denoised_image[pixel_west_neighbor])
+    ifelse(is.na(pixel_north_neighbor), 1, pixel_neighbor_similarity * pixel_color * denoised_image[pixel_north_neighbor]) + 
+    ifelse(is.na(pixel_east_neighbor), 1, pixel_neighbor_similarity * pixel_color * denoised_image[pixel_east_neighbor]) +
+    ifelse(is.na(pixel_south_neighbor), 1, pixel_neighbor_similarity * pixel_color * denoised_image[pixel_south_neighbor]) +
+    ifelse(is.na(pixel_west_neighbor), 1, pixel_neighbor_similarity * pixel_color * denoised_image[pixel_west_neighbor])
   
   # Energy due to closeness to noisy image
   if (!isTRUE(ising_prior_only)) {
-    pixel_energy = pixel_energy - (0.5 * (pixel_color - noisy_image[pixel_index]) ^ 2) / PIXEL_DISSIMILARITY_TO_NOISY_COUNTERPART
+    pixel_energy = pixel_energy - (0.5 * (pixel_color - noisy_image[pixel_index]) ^ 2) / pixel_similarity_to_noisy
   }
   
   return(pixel_energy)
@@ -121,7 +120,7 @@ get_pixel_energy_level = function(pixel_index, pixel_neighbors, denoised_image, 
 ## white_squares: boolean for white squares of checkerboard
 ##
 ## Will return the the image after denoising
-denoise_half_checkerboard = function(denoised_image, noisy_image, white_squares, ising_prior_only, show_animation) {
+denoise_half_checkerboard = function(denoised_image, noisy_image, white_squares, ising_prior_only, show_animation, black_white_ratio, pixel_neighbor_similarity, pixel_similarity_to_noisy) {
   
   # Get pixel indexes corresponding to half the checkerboard
   pixel_present = get_half_checkerboard(white_squares, 
@@ -135,8 +134,8 @@ denoise_half_checkerboard = function(denoised_image, noisy_image, white_squares,
                                         image_height=dim(noisy_image)[IMAGE_HEIGHT_DIMENSION])
   
   # Get energy level of pixels
-  black_pixel_energy_level = exp(get_pixel_energy_level(pixel_index, pixel_neighbors, denoised_image, noisy_image, black_pixel=TRUE, ising_prior_only))
-  white_pixel_energy_level = exp(get_pixel_energy_level(pixel_index, pixel_neighbors, denoised_image, noisy_image, black_pixel=FALSE, ising_prior_only))
+  black_pixel_energy_level = exp(get_pixel_energy_level(pixel_index, pixel_neighbors, denoised_image, noisy_image, black_pixel=TRUE, ising_prior_only, black_white_ratio, pixel_neighbor_similarity, pixel_similarity_to_noisy))
+  white_pixel_energy_level = exp(get_pixel_energy_level(pixel_index, pixel_neighbors, denoised_image, noisy_image, black_pixel=FALSE, ising_prior_only, black_white_ratio, pixel_neighbor_similarity, pixel_similarity_to_noisy))
 
   # Compute probability of pixel being black
   black_pixel_probability = black_pixel_energy_level / (black_pixel_energy_level + white_pixel_energy_level)
@@ -194,7 +193,7 @@ estimate_noise_variance = function(denoised_image, noisy_image, previous_std_dev
 ## noisy_image: grayscale noisy image
 ##
 ## Will return the image after denoising
-gibbs_sampling = function(noisy_image, ising_prior_only=FALSE, initialize_random=FALSE, show_animation) {
+gibbs_sampling = function(noisy_image, ising_prior_only=FALSE, initialize_random=FALSE, show_animation, black_white_ratio, pixel_neighbor_similarity, pixel_similarity_to_noisy, estimate_noise_variance) {
   
   # Initialize denoised image
   if (isTRUE(initialize_random)) {
@@ -207,24 +206,33 @@ gibbs_sampling = function(noisy_image, ising_prior_only=FALSE, initialize_random
   
   # Burn in
   for (iteration_counter in 1:BURN_IN_ITERATIONS) {
-    denoised_image = denoise_half_checkerboard(denoised_image, noisy_image, white_squares=TRUE, ising_prior_only, show_animation)
-    denoised_image = denoise_half_checkerboard(denoised_image, noisy_image, white_squares=FALSE, ising_prior_only, show_animation)
+    denoised_image = denoise_half_checkerboard(denoised_image, noisy_image, white_squares=TRUE, ising_prior_only, show_animation, black_white_ratio, pixel_neighbor_similarity, pixel_similarity_to_noisy)
+    denoised_image = denoise_half_checkerboard(denoised_image, noisy_image, white_squares=FALSE, ising_prior_only, show_animation, black_white_ratio, pixel_neighbor_similarity, pixel_similarity_to_noisy)
   }
   
   std_dev_estimate = NULL
   
   # Denoise the image
   for (iteration_counter in 1:DENOISING_ITERATIONS) {
-    denoised_image = denoise_half_checkerboard(denoised_image, noisy_image, white_squares=TRUE, ising_prior_only, show_animation)
-    denoised_image = denoise_half_checkerboard(denoised_image, noisy_image, white_squares=FALSE, ising_prior_only, show_animation)
-    std_dev_estimate = estimate_noise_variance(denoised_image, noisy_image, std_dev_estimate)
-  }
+    denoised_image = denoise_half_checkerboard(denoised_image, noisy_image, white_squares=TRUE, ising_prior_only, show_animation, black_white_ratio, pixel_neighbor_similarity, pixel_similarity_to_noisy)
+    denoised_image = denoise_half_checkerboard(denoised_image, noisy_image, white_squares=FALSE, ising_prior_only, show_animation, black_white_ratio, pixel_neighbor_similarity, pixel_similarity_to_noisy)
+    if (isTRUE(estimate_noise_variance)) {
+      std_dev_estimate = estimate_noise_variance(denoised_image, noisy_image, std_dev_estimate)
+    }
 
+  }
+  
+  std_dev_estimates[length(std_dev_estimates) + 1] <<- std_dev_estimate
+  
   return(denoised_image)
   
 }
 
-denoise_image = function(image_file, ising_prior_only=FALSE, initialize_random=TRUE, show_animation=FALSE) {
+denoise_image = function(image_file, ising_prior_only=FALSE, initialize_random=TRUE, show_animation=FALSE, black_white_ratio=BLACK_TO_WHITE_PIXEL_RATIO, pixel_neighbor_similarity=PIXEL_SIMILARITY_TO_NEIGHBORS, pixel_similarity_to_noisy=PIXEL_DISSIMILARITY_TO_NOISY_COUNTERPART, estimate_noise_variance=TRUE) {
+  
+  if (isTRUE(show_animation)) {
+    library(animation)
+  }
   
   image_array = retrieve_image(image_file)
 
@@ -232,18 +240,18 @@ denoise_image = function(image_file, ising_prior_only=FALSE, initialize_random=T
     oopt <- ani.options(interval = 0.2, nmax = BURN_IN_ITERATIONS + DENOISING_ITERATIONS)
   }
   
-  denoised_image = gibbs_sampling(image_array, ising_prior_only, initialize_random, show_animation)
+  denoised_image = gibbs_sampling(image_array, ising_prior_only, initialize_random, show_animation, black_white_ratio, pixel_neighbor_similarity, pixel_similarity_to_noisy, estimate_noise_variance)
   
   if (isTRUE(show_animation)) {
     ani.options(oopt)
   } else {
-    plot(denoised_image)
+    plot(denoised_image, main=paste(image_file, ", Alpha =", black_white_ratio, ", Beta =", pixel_neighbor_similarity, ", Variance =", pixel_similarity_to_noisy))
   }
   
 }
 
 denoise_message = function() {
-  denoise_image(image_file="noisy-message.png", ising_prior_only=FALSE, initialize_random=TRUE, show_animation=TRUE)
+  denoise_image(image_file="noisy-message.png", ising_prior_only=FALSE, initialize_random=TRUE, show_animation=FALSE)
 }
 
 
@@ -263,3 +271,34 @@ generate_gifs = function() {
     convert = "convert", cmd.fun = system, clean = TRUE)
 }
 
+one_a_ising_prior_only = function() {
+
+  for (alpha in c(0.0000001, 0)) {
+    for (beta in c(0.75, 1.0, 1.25)) {
+      
+      denoise_image(image_file="noisy-message.png", ising_prior_only=TRUE, initialize_random=TRUE, show_animation=FALSE, black_white_ratio=alpha, pixel_neighbor_similarity=beta, estimate_noise_variance=FALSE)
+      
+      denoise_image(image_file="noisy-yinyang.png", ising_prior_only=TRUE, initialize_random=TRUE, show_animation=FALSE, black_white_ratio=alpha, pixel_neighbor_similarity=beta, estimate_noise_variance=FALSE)
+      
+    }
+  }
+
+}
+
+full_posterior = function() {
+  
+  denoise_image(image_file="noisy-message.png", ising_prior_only=FALSE, initialize_random=TRUE, show_animation=FALSE, black_white_ratio=BLACK_TO_WHITE_PIXEL_RATIO, pixel_neighbor_similarity=PIXEL_SIMILARITY_TO_NEIGHBORS, estimate_noise_variance=TRUE)
+
+  denoise_image(image_file="noisy-yinyang.png", ising_prior_only=FALSE, initialize_random=TRUE, show_animation=FALSE, black_white_ratio=BLACK_TO_WHITE_PIXEL_RATIO, pixel_neighbor_similarity=PIXEL_SIMILARITY_TO_NEIGHBORS, estimate_noise_variance=TRUE)
+
+}
+
+print_std_dev_estimates = function() {
+  
+  print(paste("Standard deviation estimate for noisy message:", std_dev_estimates[1]))
+  
+  print(paste("Standard deviation estimate for noisy yinyang:", std_dev_estimates[2]))
+  
+}
+
+full_posterior()

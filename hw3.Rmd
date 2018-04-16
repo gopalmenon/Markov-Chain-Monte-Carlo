@@ -25,9 +25,36 @@ knitr::opts_chunk$set(echo = TRUE)
 
 \begin{enumerate}
 
-\item[1.]
+\item[1(a)] Gibbs Sampling of noisy image with Ising prior only.
+
+The sampled images are shown for various values of $\alpha$ and $\beta$. The variance values shown should be disregarded as that part of the energy function is not used.
 
 \end{enumerate}
+
+```{r q1a, echo=FALSE, message=FALSE, fig.align='center'}
+source("Gibbs Sampling Image Noise Reduction.r")
+#one_a_ising_prior_only()
+```
+
+\begin{enumerate}
+
+\item[1(b)] Here are the posterior images for $10$ burn in and $20$ denoising iterations. The parameter values I used were $\alpha=0$, $\beta=1$ and $\sigma^2=1$.
+
+\end{enumerate}
+
+```{r q1b, echo=FALSE, message=FALSE, fig.align='center'}
+full_posterior()
+```
+
+\begin{enumerate}
+
+\item[1(c)] Final estimates for $\sigma^2=1$.
+
+\end{enumerate}
+
+```{r q1c, echo=FALSE, message=FALSE, fig.align='center'}
+print_std_dev_estimates()
+```
 
 \begin{enumerate}
 
@@ -76,7 +103,3 @@ U(\beta) &= \sum_{i=1}^n (1-y_i) x_i^T\beta + \sum_{i=1}^n \log \left ( 1 + e^{-
 $$
 \end{enumerate}
 
-```{r q1a, echo=FALSE, message=FALSE}
-source("Gibbs Sampling Image Noise Reduction.r")
-denoise_yinyang()
-```
