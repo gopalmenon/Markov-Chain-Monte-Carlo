@@ -251,15 +251,16 @@ denoise_image = function(image_file, ising_prior_only=FALSE, initialize_random=T
 }
 
 denoise_message = function() {
-  denoise_image(image_file="noisy-message.png", ising_prior_only=FALSE, initialize_random=TRUE, show_animation=FALSE)
+  denoise_image(image_file="noisy-message.png", ising_prior_only=FALSE, initialize_random=TRUE, show_animation=TRUE)
 }
 
 
 denoise_yinyang = function() {
-  denoise_image(image_file="noisy-yinyang.png", ising_prior_only=FALSE, initialize_random=TRUE, show_animation=FALSE)
+  denoise_image(image_file="noisy-yinyang.png", ising_prior_only=FALSE, initialize_random=TRUE, show_animation=TRUE)
 }
 
 generate_gifs = function() {
+  library(animation)
   saveGIF({ani.options(interval = 0.2, nmax = BURN_IN_ITERATIONS + DENOISING_ITERATIONS)
     par(mar = c(4, 4, .1, 0.1), mgp = c(2, 0.7, 0))
     denoise_message()}, movie.name = "noisy-message.gif", img.name = "Rplot",

@@ -48,7 +48,7 @@ full_posterior()
 
 \begin{enumerate}
 
-\item[1(c)] For estimating $\sigma^2$, I started with a wide guess range and then did a maximum likelihood computation at each iteration. Final estimates for $\sigma^2=1$:
+\item[1(c)] For estimating $\sigma^2$, I started with a wide guess range and then did a maximum likelihood computation at each iteration. Final estimates for $\sigma^2$:
 
 \end{enumerate}
 
@@ -78,7 +78,7 @@ $$
 \begin{aligned} 
 p(\beta|y;x,\sigma) &\propto \prod_{i=1}^n p(y_i|\beta; x_i)p(\beta; \sigma)\\
 &=\prod_{i=1}^n \left (\left [ \frac{1}{1+e^{-x_i^T\beta}} \right ]^{y_i} \left [1- \frac{1}{1+e^{-x_i^T\beta}} \right ]^{1-y_i}\right ) \frac{1}{\sqrt{(2\pi)^k |\sigma^2 I|} }e^{\left (-\frac{1}{2} \beta^T \left ( \sigma^2 I \right )^{-1} \beta\right)}\\
-\text{where, } \beta \in \mathbb{R}^k
+\text{where, } \beta \in \mathbb{R}^k \text{, and } k=d+1
 \end{aligned}\\
 $$
 \end{enumerate}
@@ -106,7 +106,7 @@ $$
 
 \begin{enumerate}
 
-\item[2(d)] The Monte Carlo estimate of posterior predictive probability of the Versicolor label was computed by first doing a dot product of each $\beta$ with the test data and then averaging it out for each data point. A value of $0.5$ and above was classified as Versicolor. 
+\item[2(d)] The Monte Carlo estimate of posterior predictive probability of the label was computed by first doing a dot product of each $\beta$ with the test data and then averaging it out for each data point. A value of $0.5$ and above was classified as Versicolor. 
 
 \end{enumerate}
 

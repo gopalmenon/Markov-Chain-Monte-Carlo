@@ -112,7 +112,7 @@ run_iris_logistic_regression = function() {
   predicted_labels = ifelse(rowSums(predicted_elements)/dim(predicted_elements)[2] >= 0.5, 1, 0)
   actual_labels = test_data[, length(test_data[1, ])]
   prediction_error = actual_labels - predicted_labels
-  average_prediction_error = sum(prediction_error) / length(prediction_error)
+  average_prediction_error = sum(abs(prediction_error)) / length(prediction_error)
   zero_one_loss <<- sum(abs(prediction_error))
   
 }
