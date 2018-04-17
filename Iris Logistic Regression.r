@@ -108,7 +108,8 @@ run_iris_logistic_regression = function() {
   classification_boundary = colSums(classification_boundary_trend) / length(classification_boundary_trend[, 1])
   
   # Make test data predictions based on classification boundary
-  predicted_labels = ifelse(rowSums(as.matrix(test_data[, 1:length(test_data[1, ])-1])%*%as.matrix(t(classification_boundary_trend))) >= 0.5, 1, 0)
+  predicted_elements = as.matrix(test_data[, 1:length(test_data[1, ])-1])%*%as.matrix(t(classification_boundary_trend))
+  predicted_labels = ifelse(rowSums(predicted_elements)/dim(predicted_elements)[2] >= 0.5, 1, 0)
   actual_labels = test_data[, length(test_data[1, ])]
   prediction_error = actual_labels - predicted_labels
   average_prediction_error = sum(prediction_error) / length(prediction_error)

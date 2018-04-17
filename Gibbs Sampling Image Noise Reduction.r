@@ -300,5 +300,3 @@ print_std_dev_estimates = function() {
   print(paste("Standard deviation estimate for noisy yinyang:", std_dev_estimates[2]))
   
 }
-
-full_posterior()
