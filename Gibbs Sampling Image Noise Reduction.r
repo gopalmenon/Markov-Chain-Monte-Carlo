@@ -120,7 +120,7 @@ get_pixel_energy_level = function(pixel_index, pixel_neighbors, denoised_image, 
 ## white_squares: boolean for white squares of checkerboard
 ##
 ## Will return the the image after denoising
-denoise_half_checkerboard = function(denoised_image, noisy_image, white_squares, ising_prior_only, show_animation, black_white_ratio, pixel_neighbor_similarity, pixel_similarity_to_noisy) {
+denoise_half_checkerboard = function(denoised_image, noisy_image, white_squares, ising_prior_only, show_animation, black_white_ratio, pixel_neighbor_similarity, pixel_similarity_to_noisy, denoising_iteration) {
   
   # Get pixel indexes corresponding to half the checkerboard
   pixel_present = get_half_checkerboard(white_squares, 
@@ -140,8 +140,9 @@ denoise_half_checkerboard = function(denoised_image, noisy_image, white_squares,
   # Compute probability of pixel being black
   black_pixel_probability = black_pixel_energy_level / (black_pixel_energy_level + white_pixel_energy_level)
   
-  # Sample from the probability distribution
-  denoised_image[pixel_index] = ifelse(black_pixel_probability >= runif(n=length(black_pixel_energy_level)), BLACK_PIXEL, WHITE_PIXEL)
+  # Sample from the probability distribution and update mean image
+  denoised_image[pixel_index] = 
+    (denoised_image[pixel_index] * denoising_iteration + ifelse(black_pixel_probability >= runif(n=length(black_pixel_energy_level)), BLACK_PIXEL, WHITE_PIXEL)) / (denoising_iteration + 1)
   
   if (isTRUE(show_animation)) {
     plot(denoised_image)
@@ -197,7 +198,7 @@ gibbs_sampling = function(noisy_image, ising_prior_only=FALSE, initialize_random
   
   # Initialize denoised image
   if (isTRUE(initialize_random)) {
-    denoised_image = ifelse(rbinom(n=length(noisy_image), size=1, prob=0.5)==0, -1, 1)
+    denoised_image = runif(n=length(noisy_image), min=-1, max=1)
     dim(denoised_image) = dim(noisy_image)
     denoised_image = cimg(denoised_image)
   } else {
@@ -206,16 +207,16 @@ gibbs_sampling = function(noisy_image, ising_prior_only=FALSE, initialize_random
   
   # Burn in
   for (iteration_counter in 1:BURN_IN_ITERATIONS) {
-    denoised_image = denoise_half_checkerboard(denoised_image, noisy_image, white_squares=TRUE, ising_prior_only, show_animation, black_white_ratio, pixel_neighbor_similarity, pixel_similarity_to_noisy)
-    denoised_image = denoise_half_checkerboard(denoised_image, noisy_image, white_squares=FALSE, ising_prior_only, show_animation, black_white_ratio, pixel_neighbor_similarity, pixel_similarity_to_noisy)
+    denoised_image = denoise_half_checkerboard(denoised_image, noisy_image, white_squares=TRUE, ising_prior_only, show_animation, black_white_ratio, pixel_neighbor_similarity, pixel_similarity_to_noisy, denoising_iteration=iteration_counter)
+    denoised_image = denoise_half_checkerboard(denoised_image, noisy_image, white_squares=FALSE, ising_prior_only, show_animation, black_white_ratio, pixel_neighbor_similarity, pixel_similarity_to_noisy, denoising_iteration=iteration_counter)
   }
   
   std_dev_estimate = NULL
   
   # Denoise the image
   for (iteration_counter in 1:DENOISING_ITERATIONS) {
-    denoised_image = denoise_half_checkerboard(denoised_image, noisy_image, white_squares=TRUE, ising_prior_only, show_animation, black_white_ratio, pixel_neighbor_similarity, pixel_similarity_to_noisy)
-    denoised_image = denoise_half_checkerboard(denoised_image, noisy_image, white_squares=FALSE, ising_prior_only, show_animation, black_white_ratio, pixel_neighbor_similarity, pixel_similarity_to_noisy)
+    denoised_image = denoise_half_checkerboard(denoised_image, noisy_image, white_squares=TRUE, ising_prior_only, show_animation, black_white_ratio, pixel_neighbor_similarity, pixel_similarity_to_noisy, denoising_iteration=BURN_IN_ITERATIONS+iteration_counter)
+    denoised_image = denoise_half_checkerboard(denoised_image, noisy_image, white_squares=FALSE, ising_prior_only, show_animation, black_white_ratio, pixel_neighbor_similarity, pixel_similarity_to_noisy, denoising_iteration=BURN_IN_ITERATIONS+iteration_counter)
     if (isTRUE(estimate_noise_variance)) {
       std_dev_estimate = estimate_noise_variance(denoised_image, noisy_image, std_dev_estimate)
     }

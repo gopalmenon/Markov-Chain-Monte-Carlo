@@ -38,7 +38,7 @@ one_a_ising_prior_only()
 
 \begin{enumerate}
 
-\item[1(b)] Here are the posterior images for $10$ burn in and $20$ denoising iterations. The parameter values I used were $\alpha=0$, $\beta=1$ and $\sigma^2=1$. The images converged really fast in the first few iterations. The function generate\_gifs in the R code can be called to generate gif images that show the image transition. I did not try include the gif images in the output as it did not seem to be platform independent. 
+\item[1(b)] Here are the posterior images for $10$ burn in and $20$ denoising iterations. The parameter values I used were $\alpha=0$, $\beta=1$ and $\sigma^2=1$. The images converged really fast in the first few iterations. The posterior was initialized with random real values between $-1$ and $+1$. The function generate\_gifs in the R code can be called to generate gif images that show the image transition. I did not try include the gif images in the output as it did not seem to be platform independent. 
 
 \end{enumerate}
 
@@ -106,7 +106,7 @@ $$
 
 \begin{enumerate}
 
-\item[2(d)] The Monte Carlo estimate of posterior predictive probability of the label was computed by first doing a dot product of each $\beta$ with the test data and then averaging it out for each data point. A value of $0.5$ and above was classified as Versicolor. 
+\item[2(d)] The Monte Carlo estimate of posterior predictive probability of the label was computed by first doing a dot product of each $\beta$ with the test data and then averaging it out. A value of $0.5$ and above was classified as Versicolor. 
 
 \end{enumerate}
 
